@@ -127,7 +127,7 @@ is_idx(_)                    -> false.
 
 -spec to_riakc_obj(ect()) -> riakc_obj().
 to_riakc_obj(#krc_obj{bucket=B, key=K, indices=I, val=V, vclock=C}) ->
-  riakc_obj:new_obj(encode(B), encode(K), C, [{encode_indices(I), encode(V)}]).
+  riakc_obj:new_obj(encode(B), encode(K), C, [{encode_indices(I), V}]).
 
 
 -spec from_riakc_obj(riakc_obj()) -> ect() | no_return().
@@ -135,9 +135,9 @@ to_riakc_obj(#krc_obj{bucket=B, key=K, indices=I, val=V, vclock=C}) ->
 from_riakc_obj(Obj) ->
   ?match({riakc_obj, _, _, _, _, undefined, undefined}, Obj),
   Contents = riakc_obj:get_contents(Obj),
-  #krc_obj{ bucket  = decode(riakc_obj:bucket(Obj))
-          , key     = decode(riakc_obj:key(Obj))
-          , val     = [decode(V) || {_, V} <- Contents]
+  #krc_obj{ bucket  = riakc_obj:bucket(Obj)
+          , key     = riakc_obj:key(Obj)
+          , val     = [binary_to_term(V) || {_, V} <- Contents]
           , indices = [decode_indices(MD) || {MD, _} <- Contents]
           , vclock  = riakc_obj:vclock(Obj) %opaque
           }.
@@ -170,11 +170,13 @@ resolve(#krc_obj{val=Vs, indices=Is} = Obj, F) ->
 %%%_ * Representation --------------------------------------------------
 %% On-disk (we allow arbitrary terms, Riak stores binaries; these are
 %% used for bucket names, keys, and values).
--spec encode(_)                -> binary().
-encode(X)                      -> term_to_binary(X).
+-spec encode(_)                -> binary() |{binary(), binary()}.
+encode({T,B})                  -> {wf:to_binary(T), wf:to_binary(B)};
+encode(X)                      -> wf:to_binary(X).
 
 -spec decode(binary())         -> _.
 decode(<<>>)                   -> ?TOMBSTONE;
+decode({T,B})                  -> {binary_to_term(T), binary_to_term(B)};
 decode(X)                      -> binary_to_term(X).
 
 %% Index names (Riak uses strings with a type suffix; we only use one

@@ -45,10 +45,17 @@ delete(Pid, Bucket, Key, Options, Timeout) ->
     {error, _} = Err -> Err
   end.
 
+get(Pid, {<<"crdt", _/binary>>, _} = Bucket, Key, Options, _Timeout) ->
+  case
+    riakc_pb_socket:fetch_type(Pid, Bucket, Key, Options)
+  of
+    {ok, Val} -> {ok, krc_obj:new(Bucket, Key, [Val])};
+    {error, _} = Err -> Err
+  end;
 get(Pid, Bucket, Key, Options, Timeout) ->
   case
     riakc_pb_socket:get(
-      Pid, krc_obj:encode(Bucket), krc_obj:encode(Key), Options, Timeout)
+      Pid, Bucket, Key, Options, Timeout)
   of
     {ok, Obj}        -> {ok, krc_obj:from_riakc_obj(Obj)};
     {error, _} = Err -> Err
@@ -68,6 +75,37 @@ get_index(Pid, Bucket, Index, Key, Timeout) ->
   end.
 
 put(Pid, Obj, Options, Timeout) ->
+  put(Pid, Obj, Options, Timeout, krc_obj:val(Obj)).
+
+put(Pid, Obj, _Options, _Timeout, {update_type, Fun})  ->
+  {Type, Bucket}  = krc_obj:bucket(Obj),
+
+  %% Key in the krc_obj is a list at the moment, would prefer it to be a binary, but it breaks soapbox and it's
+  %% more work than it's worth to change it
+  Key = wf:to_binary(krc_obj:key(Obj)),
+  Fun_ = riakc_map:to_op(Fun),
+
+  case
+    riakc_pb_socket:update_type(Pid, {wf:to_binary(Type), wf:to_binary(Bucket)}, Key, Fun_, [])
+  of
+    %ok                  -> ok;
+    {ok, _ReturnVal}     -> ok; %{ok, ReturnVal};
+    {ok, _Key, _DataType} -> ok; %{ok, {Key, DataType}};
+    {error, _} = Err    -> Err
+  end;
+put(Pid, Obj, _Options, _Timeout, {modify_type, Fun}) ->
+  Bucket = krc_obj:bucket(Obj),
+  %% Key in the krc_obj is a list at the moment, would prefer it to be a binary, but it breaks soapbox and it's
+  %% more work than it's worth to change it
+  Key = wf:to_binary(krc_obj:key(Obj)),
+  case
+    riakc_pb_socket:modify_type(Pid, Fun, Bucket, Key, [create, return_body])
+  of
+    ok               -> ok;
+    {ok, DataType}  -> io:format("{ok, ~p}~n", [DataType]),ok;
+    {error, _} = Err -> Err
+  end;
+put(Pid, Obj, Options, Timeout, _) ->
   case
     riakc_pb_socket:put(Pid, krc_obj:to_riakc_obj(Obj), Options, Timeout)
   of
