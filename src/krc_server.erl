@@ -84,6 +84,7 @@
         , get/3
         , get_index/4
         , put/2
+        , search/3
         ]).
 
 %% gen_server callbacks
@@ -129,6 +130,7 @@ delete(GS, B, K)       -> call(GS, {delete,    [B, K]   }).
 get(GS, B, K)          -> call(GS, {get,       [B, K]   }).
 get_index(GS, B, I, K) -> call(GS, {get_index, [B, I, K]}).
 put(GS, O)             -> call(GS, {put,       [O]      }).
+search(GS, I, Q)       -> call(GS, {search,    [I, Q]}).
 
 start(A)               -> gen_server:start(?MODULE, A, []).
 start(Name, A)         -> gen_server:start({local, Name}, ?MODULE, A, []).
@@ -250,7 +252,8 @@ do(Client, Pid, {F, A}) ->
 opts(delete)    -> [dopts()];
 opts(get)       -> [ropts()];
 opts(get_index) -> [];
-opts(put)       -> [wopts()].
+opts(put)       -> [wopts()];
+opts(search)    -> [].
 
 %%%_  * Config ---------------------------------------------------------
 %% Our app.config sets:

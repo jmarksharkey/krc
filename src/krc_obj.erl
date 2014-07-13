@@ -134,8 +134,8 @@ to_riakc_obj(#krc_obj{bucket=B, key=K, indices=I, val=V, vclock=C}) ->
 %% Siblings need to be resolved separately.
 from_riakc_obj(Obj) ->
   ?match({riakc_obj, _, _, _, _, undefined, undefined}, Obj),
-  Contents = riakc_obj:get_contents(Obj),
-  #krc_obj{ bucket  = riakc_obj:bucket(Obj)
+    Contents = riakc_obj:get_contents(Obj),
+    #krc_obj{ bucket  = riakc_obj:bucket(Obj)
           , key     = riakc_obj:key(Obj)
           , val     = [binary_to_term(V) || {_, V} <- Contents]
           , indices = [decode_indices(MD) || {MD, _} <- Contents]

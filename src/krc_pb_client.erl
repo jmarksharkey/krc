@@ -30,6 +30,7 @@
         , get_index/5
         , put/4
         , start_link/3
+        , search/4
         ]).
 
 %%%_* Includes =========================================================
@@ -112,6 +113,14 @@ put(Pid, Obj, Options, Timeout, _) ->
     ok               -> ok;
     {error, _} = Err -> Err
   end.
+search(Pid, Idx, Query, _Timeout) ->
+    case
+        riakc_pb_socket:search(Pid, Idx, Query)
+    of
+        {ok, SearchResults}     -> {ok, SearchResults};
+        {error, Err}            -> Err
+    end.
+
 
 start_link(IP, Port, Options) ->
   {ok, Pid} = riakc_pb_socket:start_link(IP, Port, Options),

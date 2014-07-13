@@ -35,6 +35,10 @@
         , put_index/3
         ]).
 
+-export([
+        search/3
+]).
+
 %% Args
 -export_type([ resolver/0
              , server/0
@@ -71,6 +75,7 @@ delete(S, B, K) -> krc_server:delete(S, B, K).
 %% @doc Fetch the object associated with K in B.
 get(S, B, K)    -> get(S, B, K, defaulty()).
 get(S, B, K, F) -> get_loop(S, B, K, wrap(F)).
+
 
 defaulty() -> fun(V1, V2) -> throw({defaulty, V1, V2}) end.
 
@@ -121,6 +126,11 @@ put(S, O) -> krc_server:put(S, O).
 %% @doc Add O to Indices and store it.
 put_index(S, O, Indices) when is_list(Indices) ->
   krc_server:put(S, krc_obj:set_indices(O, Indices)).
+
+-spec search(server(), Idx::binary(), Query::binary()) -> any(). %% TODO shouldn't be any.. it's riakc_pb_socket #search_results{} but that's not exported
+search(S, Idx, Query) ->
+    krc_server:search(S, Idx, Query).
+
 
 %%%_* Internal =========================================================
 %% @doc We automatically try to GET this many times.
