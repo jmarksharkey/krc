@@ -24,10 +24,13 @@
 -module(krc_pb_client).
 -behaviour(krc_riak_client).
 
+-include_lib("../../../deps/riakc/include/riakc.hrl").
+
 %%%_* Exports ==========================================================
 -export([ delete/5
         , get/5
         , get_index/5
+        , fetch/5
         , put/4
         , start_link/3
         , search/4
@@ -46,13 +49,14 @@ delete(Pid, Bucket, Key, Options, Timeout) ->
     {error, _} = Err -> Err
   end.
 
-get(Pid, {<<"crdt", _/binary>>, _} = Bucket, Key, Options, _Timeout) ->
+fetch(Pid, Bucket, Key, Options, _Timeout) ->
   case
     riakc_pb_socket:fetch_type(Pid, Bucket, Key, Options)
   of
     {ok, Val} -> {ok, krc_obj:new(Bucket, Key, [Val])};
     {error, _} = Err -> Err
-  end;
+  end.
+
 get(Pid, Bucket, Key, Options, Timeout) ->
   case
     riakc_pb_socket:get(
@@ -71,8 +75,8 @@ get_index(Pid, Bucket, Index, Key, Timeout) ->
                               Timeout,
                               infinity) %gen_server call
   of
-    {ok, Keys}       -> {ok, [krc_obj:decode(K) || K <- Keys]};
-    {error, _} = Err -> Err
+      {error, _} = Err -> Err;
+      {_, Res}       -> {ok, [krc_obj:decode(K) || K <- Res#index_results_v1.keys]}
   end.
 
 put(Pid, Obj, Options, Timeout) ->
@@ -100,7 +104,7 @@ put(Pid, Obj, _Options, _Timeout, {modify_type, Fun}) ->
   %% more work than it's worth to change it
   Key = wf:to_binary(krc_obj:key(Obj)),
   case
-    riakc_pb_socket:modify_type(Pid, Fun, Bucket, Key, [create, return_body])
+    riakc_pb_socket:modify_type(Pid, Fun, Bucket, Key, [{create, true}, return_body])
   of
     ok               -> ok;
     {ok, DataType}  -> io:format("{ok, ~p}~n", [DataType]),ok;

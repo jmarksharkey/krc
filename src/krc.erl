@@ -29,6 +29,8 @@
 -export([ delete/3
         , get/3
         , get/4
+        , fetch/3
+        , fetch/4
         , get_index/4
         , get_index/5
         , put/2
@@ -76,6 +78,9 @@ delete(S, B, K) -> krc_server:delete(S, B, K).
 get(S, B, K)    -> get(S, B, K, defaulty()).
 get(S, B, K, F) -> get_loop(S, B, K, wrap(F)).
 
+fetch(S, B, K)    -> fetch(S, B, K, defaulty()).
+fetch(S, B, K, F) -> fetch_loop(S, B, K, wrap(F)).
+
 
 defaulty() -> fun(V1, V2) -> throw({defaulty, V1, V2}) end.
 
@@ -101,6 +106,22 @@ get_loop(I, N, S, B, K, F) when N >= I ->
     {error, _} = Err -> Err
   end;
 get_loop(I, N, _, _, _, _) when N < I -> {error, notfound}.
+
+
+fetch_loop(S, B, K, F) ->
+    fetch_loop(1, get_tries(), S, B, K, F).
+fetch_loop(I, N, S, B, K, F) when N >= I ->
+    case krc_server:fetch(S, B, K) of
+        {ok, Obj} ->
+            krc_obj:resolve(Obj, F);
+        {error, notfound} ->
+            ?info("{~p, ~p} not found, attempt ~p of ~p", [B, K, I, N]),
+            ?increment([reads, retries]),
+            timer:sleep(retry_wait_ms()),
+            fetch_loop(I+1, N, S, B, K, F);
+        {error, _} = Err -> Err
+    end;
+fetch_loop(I, N, _, _, _, _) when N < I -> {error, notfound}.
 
 
 -spec get_index(server(), bucket(), idx(), idx_key()) ->

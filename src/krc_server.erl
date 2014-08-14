@@ -82,6 +82,7 @@
 %% Riak API
 -export([ delete/3
         , get/3
+        , fetch/3
         , get_index/4
         , put/2
         , search/3
@@ -129,6 +130,7 @@
 delete(GS, B, K)       -> call(GS, {delete,    [B, K]   }).
 get(GS, B, K)          -> call(GS, {get,       [B, K]   }).
 get_index(GS, B, I, K) -> call(GS, {get_index, [B, I, K]}).
+fetch(GS, B, K)        -> call(GS, {fetch,     [B, K]   }).
 put(GS, O)             -> call(GS, {put,       [O]      }).
 search(GS, I, Q)       -> call(GS, {search,    [I, Q]}).
 
@@ -251,6 +253,7 @@ do(Client, Pid, {F, A}) ->
 
 opts(delete)    -> [dopts()];
 opts(get)       -> [ropts()];
+opts(fetch)     -> [ropts()];
 opts(get_index) -> [];
 opts(put)       -> [wopts()];
 opts(search)    -> [].
