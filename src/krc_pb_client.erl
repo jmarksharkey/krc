@@ -24,6 +24,7 @@
 -module(krc_pb_client).
 -behaviour(krc_riak_client).
 
+-include_lib("../../../deps/g10app/include/g10riak.hrl").
 -include_lib("../../../deps/riakc/include/riakc.hrl").
 
 %%%_* Exports ==========================================================
@@ -49,6 +50,20 @@ delete(Pid, Bucket, Key, Options, Timeout) ->
     {error, _} = Err -> Err
   end.
 
+get(Pid, {<<"maps", _/binary>>,_} = Bucket, Key, Options, Timeout) ->
+    fetch(Pid, Bucket, Key, Options, Timeout);
+get(Pid, {<<"sets", _/binary>>,_} = Bucket, Key, Options, Timeout) ->
+    fetch(Pid, Bucket, Key, Options, Timeout);
+get(Pid, Bucket, Key, Options, Timeout) ->
+    case
+    riakc_pb_socket:get(
+        Pid, Bucket, Key, Options, Timeout)
+    of
+        {ok, Obj}        -> {ok, krc_obj:from_riakc_obj(Obj)};
+        {error, _} = Err -> Err
+    end.
+
+
 fetch(Pid, Bucket, Key, Options, _Timeout) ->
   case
     riakc_pb_socket:fetch_type(Pid, Bucket, Key, Options)
@@ -57,14 +72,6 @@ fetch(Pid, Bucket, Key, Options, _Timeout) ->
     {error, _} = Err -> Err
   end.
 
-get(Pid, Bucket, Key, Options, Timeout) ->
-  case
-    riakc_pb_socket:get(
-      Pid, Bucket, Key, Options, Timeout)
-  of
-    {ok, Obj}        -> {ok, krc_obj:from_riakc_obj(Obj)};
-    {error, _} = Err -> Err
-  end.
 
 get_index(Pid, Bucket, Index, Key, Timeout) ->
   case
